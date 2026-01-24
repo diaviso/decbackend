@@ -1,6 +1,5 @@
 import { IsNotEmpty, IsString, IsEnum, IsArray, ValidateNested, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
-import { QuizDifficulty } from './create-quiz.dto';
 
 export enum QuestionType {
   QCM = 'QCM',
@@ -27,9 +26,6 @@ export class CreateQuestionDto {
 
   @IsEnum(QuestionType)
   type: QuestionType;
-
-  @IsEnum(QuizDifficulty)
-  difficulty: QuizDifficulty;
 
   @IsArray()
   @ValidateNested({ each: true })

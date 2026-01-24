@@ -17,16 +17,23 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { UsersModule } from './users/users.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'uploads'),
-      serveRoot: '/uploads',
-    }),
+    ServeStaticModule.forRoot(
+      {
+        rootPath: join(__dirname, '..', 'uploads'),
+        serveRoot: '/uploads',
+      },
+      {
+        rootPath: join(__dirname, '..', 'uploads', 'documents'),
+        serveRoot: '/uploads/documents',
+      },
+    ),
     PrismaModule,
     SeedModule,
     MailModule,
@@ -41,6 +48,7 @@ import { LeaderboardModule } from './leaderboard/leaderboard.module';
     UsersModule,
     ChatbotModule,
     LeaderboardModule,
+    DocumentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

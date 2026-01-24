@@ -13,7 +13,11 @@ import { CreateQuizDto } from './dto/create-quiz.dto';
 import { UpdateQuizDto } from './dto/update-quiz.dto';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
+import { AnalyzeQuestionDto } from './dto/analyze-question.dto';
+import { GenerateQuestionsDto } from './dto/generate-questions.dto';
 import { SubmitQuizDto } from './dto/submit-quiz.dto';
+import { GenerateQuizDto } from './dto/generate-quiz.dto';
+import { PurchaseAttemptDto } from './dto/purchase-attempt.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -83,6 +87,42 @@ export class QuizzesController {
     return this.quizzesService.submitQuiz(userId, submitQuizDto);
   }
 
+  @Post('generate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  generateQuiz(@Body() generateQuizDto: GenerateQuizDto) {
+    return this.quizzesService.generateQuizWithAI(generateQuizDto);
+  }
+
+  @Post('purchase-attempt')
+  @UseGuards(JwtAuthGuard)
+  purchaseExtraAttempt(
+    @CurrentUser('id') userId: string,
+    @Body() purchaseAttemptDto: PurchaseAttemptDto,
+  ) {
+    return this.quizzesService.purchaseExtraAttempt(userId, purchaseAttemptDto);
+  }
+
+  @Get('with-status')
+  @UseGuards(JwtAuthGuard)
+  getQuizzesWithUserStatus(@CurrentUser('id') userId: string) {
+    return this.quizzesService.getQuizzesWithUserStatus(userId);
+  }
+
+  @Post('questions/analyze')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  analyzeQuestion(@Body() analyzeQuestionDto: AnalyzeQuestionDto) {
+    return this.quizzesService.analyzeQuestion(analyzeQuestionDto);
+  }
+
+  @Post('questions/generate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  generateQuestions(@Body() generateQuestionsDto: GenerateQuestionsDto) {
+    return this.quizzesService.generateQuestionsWithAI(generateQuestionsDto);
+  }
+
   // Dynamic :id routes MUST be after static routes
   @Get(':id')
   findQuizById(@Param('id') id: string) {
@@ -119,5 +159,14 @@ export class QuizzesController {
     @Param('id') quizId: string,
   ) {
     return this.quizzesService.getQuizWithCorrections(userId, quizId);
+  }
+
+  @Get(':id/access')
+  @UseGuards(JwtAuthGuard)
+  checkQuizAccess(
+    @CurrentUser('id') userId: string,
+    @Param('id') quizId: string,
+  ) {
+    return this.quizzesService.checkQuizAccess(userId, quizId);
   }
 }

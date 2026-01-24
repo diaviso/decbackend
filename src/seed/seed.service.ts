@@ -34,6 +34,7 @@ export class SeedService implements OnModuleInit {
             difficulty: QuizDifficulty.FACILE,
             timeLimit: 15,
             passingScore: 70,
+            requiredStars: 0, // First quiz - no stars required
             isFree: true,
             questions: [
               {
@@ -77,6 +78,7 @@ export class SeedService implements OnModuleInit {
             difficulty: QuizDifficulty.MOYEN,
             timeLimit: 20,
             passingScore: 75,
+            requiredStars: 10, // Requires 10 stars to unlock
             isFree: false,
             questions: [
               {
@@ -116,6 +118,7 @@ export class SeedService implements OnModuleInit {
             difficulty: QuizDifficulty.MOYEN,
             timeLimit: 20,
             passingScore: 70,
+            requiredStars: 15, // Requires 15 stars to unlock
             isFree: true,
             questions: [
               {
@@ -166,6 +169,7 @@ export class SeedService implements OnModuleInit {
             difficulty: QuizDifficulty.DIFFICILE,
             timeLimit: 25,
             passingScore: 80,
+            requiredStars: 25, // Requires 25 stars to unlock
             isFree: false,
             questions: [
               {
@@ -227,6 +231,7 @@ export class SeedService implements OnModuleInit {
             difficulty: QuizDifficulty.FACILE,
             timeLimit: 15,
             passingScore: 70,
+            requiredStars: 20, // Requires 20 stars to unlock
             isFree: true,
             questions: [
               {
@@ -277,6 +282,7 @@ export class SeedService implements OnModuleInit {
             difficulty: QuizDifficulty.DIFFICILE,
             timeLimit: 25,
             passingScore: 75,
+            requiredStars: 35, // Requires 35 stars to unlock
             isFree: false,
             questions: [
               {

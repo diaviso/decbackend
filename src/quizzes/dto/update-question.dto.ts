@@ -1,6 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsArray, ValidateNested, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
-import { QuizDifficulty } from './create-quiz.dto';
 import { QuestionType } from './create-question.dto';
 
 export class UpdateOptionDto {
@@ -25,10 +24,6 @@ export class UpdateQuestionDto {
   @IsEnum(QuestionType)
   @IsOptional()
   type?: QuestionType;
-
-  @IsEnum(QuizDifficulty)
-  @IsOptional()
-  difficulty?: QuizDifficulty;
 
   @IsArray()
   @ValidateNested({ each: true })

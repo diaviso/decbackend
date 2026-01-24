@@ -29,6 +29,11 @@ export class UpdateQuizDto {
   @IsOptional()
   passingScore?: number;
 
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  requiredStars?: number;
+
   @IsBoolean()
   @IsOptional()
   isFree?: boolean;

@@ -54,6 +54,7 @@ model User {
   forumComments     ForumComment[]
   forumCommentLikes ForumCommentLike[]
   quizAttempts      QuizAttempt[]
+  quizExtraAttempts QuizExtraAttempt[]
 
   @@map("users")
 }
@@ -104,14 +105,16 @@ model Quiz {
   difficulty      QuizDifficulty
   timeLimit       Int
   passingScore    Int
+  requiredStars   Int            @default(0)  // Minimum stars required to unlock this quiz
   isFree          Boolean        @default(false)
   isActive        Boolean        @default(true)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  theme     Theme         @relation(fields: [themeId], references: [id], onDelete: Cascade)
-  questions Question[]
-  attempts  QuizAttempt[]
+  theme           Theme                  @relation(fields: [themeId], references: [id], onDelete: Cascade)
+  questions       Question[]
+  attempts        QuizAttempt[]
+  extraAttempts   QuizExtraAttempt[]
 
   @@map("quizzes")
 }
@@ -121,7 +124,6 @@ model Question {
   quizId     String
   content    String
   type       QuestionType
-  difficulty QuizDifficulty
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   
@@ -155,6 +157,19 @@ model QuizAttempt {
   quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
 
   @@map("quiz_attempts")
+}
+
+model QuizExtraAttempt {
+  id          String   @id @default(uuid())
+  userId      String
+  quizId      String
+  starsCost   Int      // Number of stars spent for this extra attempt
+  purchasedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_extra_attempts")
 }
 
 model BlogCategory {
@@ -294,10 +309,48 @@ model ForumCommentLike {
   userId    String
   commentId String
   createdAt DateTime @default(now())
-  
+
   user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   comment ForumComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   @@unique([userId, commentId])
   @@map("forum_comment_likes")
+}
+
+// RAG - Document storage
+model Document {
+  id           String   @id @default(uuid())
+  filename     String   // Original filename
+  filepath     String   // Path where the file is stored
+  title        String?  // Optional custom title
+  description  String?  // Optional description
+  fileSize     Int      // File size in bytes
+  mimeType     String   // MIME type (application/pdf)
+  totalPages   Int?     // Number of pages (for PDFs)
+  totalChunks  Int      @default(0) // Number of chunks created
+  isProcessed  Boolean  @default(false) // Whether the document has been processed
+  processedAt  DateTime? // When the document was processed
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  chunks DocumentChunk[]
+
+  @@map("documents")
+}
+
+// RAG - Document chunks with embeddings
+model DocumentChunk {
+  id          String   @id @default(uuid())
+  documentId  String
+  content     String   // The text content of this chunk
+  chunkIndex  Int      // Order of this chunk in the document
+  pageNumber  Int?     // Page number this chunk came from (for PDFs)
+  metadata    Json?    // Additional metadata (headers, section titles, etc.)
+  embedding   Json?    // Vector embedding stored as JSON array (OpenAI uses 1536 dimensions)
+  createdAt   DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@map("document_chunks")
 }
