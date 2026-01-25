@@ -32,6 +32,7 @@ export class ForumService {
       data: {
         name: createForumCategoryDto.name,
         slug,
+        description: createForumCategoryDto.description,
       },
     });
   }

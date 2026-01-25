@@ -373,6 +373,26 @@ export class AuthService {
     };
   }
 
+  async updateAvatar(userId: string, avatarPath: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatar: avatarPath },
+    });
+
+    return {
+      message: 'Photo de profil mise à jour',
+      user: this.sanitizeUser(updatedUser),
+    };
+  }
+
   private generateToken(user: any) {
     const payload = { sub: user.id, email: user.email, role: user.role };
     return this.jwtService.sign(payload);

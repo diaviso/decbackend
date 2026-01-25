@@ -29,20 +29,24 @@ enum TopicStatus {
 }
 
 model User {
-  id                String              @id @default(uuid())
-  email             String              @unique
-  password          String?
-  firstName         String
-  lastName          String
-  country           String?
-  city              String?
-  role              UserRole            @default(USER)
-  isEmailVerified   Boolean             @default(false)
-  googleId          String?             @unique
-  stars             Int                 @default(0)
-  showInLeaderboard Boolean             @default(true)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  id                  String              @id @default(uuid())
+  email               String              @unique
+  password            String?
+  firstName           String
+  lastName            String
+  country             String?
+  city                String?
+  avatar              String?
+  role                UserRole            @default(USER)
+  isEmailVerified     Boolean             @default(false)
+  googleId            String?             @unique
+  stars               Int                 @default(0)
+  showInLeaderboard   Boolean             @default(true)
+  isPremium           Boolean             @default(false)
+  premiumExpiresAt    DateTime?
+  stripeCustomerId    String?             @unique
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   emailVerifications EmailVerification[]
   passwordResets     PasswordReset[]
@@ -55,6 +59,7 @@ model User {
   forumCommentLikes ForumCommentLike[]
   quizAttempts      QuizAttempt[]
   quizExtraAttempts QuizExtraAttempt[]
+  payments          Payment[]
 
   @@map("users")
 }
@@ -259,10 +264,11 @@ model CommentLike {
 }
 
 model ForumCategory {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  slug      String   @unique
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
   
   topics ForumTopic[]
 
@@ -353,4 +359,28 @@ model DocumentChunk {
 
   @@index([documentId])
   @@map("document_chunks")
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  userId            String
+  amount            Int           // Amount in cents
+  currency          String        @default("EUR")
+  status            PaymentStatus @default(PENDING)
+  stripePaymentId   String?       @unique
+  stripeSessionId   String?       @unique
+  description       String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
 }

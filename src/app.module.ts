@@ -18,6 +18,7 @@ import { UsersModule } from './users/users.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
 import { LeaderboardModule } from './leaderboard/leaderboard.module';
 import { DocumentsModule } from './documents/documents.module';
+import { StripeModule } from './stripe/stripe.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { DocumentsModule } from './documents/documents.module';
     ChatbotModule,
     LeaderboardModule,
     DocumentsModule,
+    StripeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
