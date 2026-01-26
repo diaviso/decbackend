@@ -9,8 +9,13 @@ async function bootstrap() {
     rawBody: true, // Required for Stripe webhooks
   });
 
+  // CORS - Support multiple origins for production
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001,http://localhost:3000';
+  const corsOrigins = frontendUrl.split(',').map(url => url.trim());
+
   app.enableCors({
-    origin: ['http://localhost:3001', 'http://localhost:3000'],
+    origin: corsOrigins,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true,
   });
 
@@ -27,6 +32,9 @@ async function bootstrap() {
     prefix: '/uploads/',
   });
 
-  await app.listen(process.env.PORT ?? 3000);
+  // Start - Railway uses PORT env variable
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 DEC API running on port ${port}`);
 }
 bootstrap();
