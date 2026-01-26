@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { QuizDifficulty, QuestionType } from '@prisma/client';
+import { QuizDifficulty, QuestionType } from '../generated/prisma';
 
 @Injectable()
 export class SeedService implements OnModuleInit {
