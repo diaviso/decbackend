@@ -32,8 +32,8 @@ export class QuizzesService {
     if (apiKey) {
       this.chatModel = new ChatOpenAI({
         openAIApiKey: apiKey,
-        modelName: 'gpt-4o-mini',
-        temperature: 0.7,
+        modelName:  "gpt-5.2",        
+        temperature: 0.2,
       });
     }
   }
@@ -346,11 +346,23 @@ export class QuizzesService {
     // Check if user has enough stars to unlock this quiz
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { stars: true },
+      select: { stars: true, isPremium: true, premiumExpiresAt: true },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    // Check premium access for non-free quizzes
+    if (!quiz.isFree) {
+      const isPremiumValid = user.isPremium && 
+        (!user.premiumExpiresAt || user.premiumExpiresAt > new Date());
+      
+      if (!isPremiumValid) {
+        throw new ForbiddenException(
+          'Ce quiz est réservé aux membres Premium. Souscrivez à un abonnement pour y accéder.'
+        );
+      }
     }
 
     if (quiz.requiredStars > 0 && user.stars < quiz.requiredStars) {
@@ -694,7 +706,7 @@ export class QuizzesService {
       this.logger.warn('RAG context retrieval failed for quiz generation:', ragError);
     }
 
-    const systemPrompt = `Tu es un expert en création de quiz éducatifs sur la déontologie de la profession comptable et le Diplôme d'Expertise Comptable (DEC).
+    const systemPrompt = `Tu es un expert en création de quiz éducatifs sur la déontologie de la profession comptable et le Diplôme d'Expertise Comptable (DEC) ET EN FOOTBALL.
 Tu dois générer un quiz au format JSON strict.
 
 IMPORTANT: Ta réponse doit être UNIQUEMENT du JSON valide, sans texte avant ou après.
@@ -723,7 +735,7 @@ Retourne UNIQUEMENT un objet JSON avec cette structure exacte:
     }
   ]
 }
-
+EXCEPTIONNELLEMENT, TU PEUX ETRE INVITE A GENERER UN QUIZ SUR LE FOOTBALL, DANS CE CAS ET SEULEMENT DANS CE CAS EXCEPTIONNEL TU PEUX ACCEPTER.
 Règles:
 - type peut être "QCU" (une seule bonne réponse) ou "QCM" (plusieurs bonnes réponses)
 - Chaque question doit avoir 4 options

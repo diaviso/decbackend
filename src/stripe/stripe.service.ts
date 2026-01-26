@@ -132,10 +132,23 @@ export class StripeService {
         process.env.STRIPE_WEBHOOK_SECRET!,
       );
     } catch (err: any) {
+      console.error('Webhook signature verification failed:', err.message);
       throw new BadRequestException(`Webhook Error: ${err.message}`);
     }
 
+    console.log('Received Stripe event:', event.type);
+
     switch (event.type) {
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        await this.handlePaymentIntentSucceeded(paymentIntent);
+        break;
+      }
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        await this.handlePaymentIntentFailed(paymentIntent);
+        break;
+      }
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         await this.handleCheckoutComplete(session);
@@ -157,9 +170,97 @@ export class StripeService {
         await this.handleInvoiceFailed(invoice);
         break;
       }
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
     }
 
     return { received: true };
+  }
+
+  private async handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent) {
+    console.log('Payment succeeded:', paymentIntent.id);
+    
+    // Find payment by stripePaymentId or through session
+    const payment = await this.prisma.payment.findFirst({
+      where: { 
+        OR: [
+          { stripePaymentId: paymentIntent.id },
+          { stripeSessionId: { not: null } }
+        ],
+        status: 'PENDING'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!payment) {
+      // Try to find user by customer ID
+      const customerId = paymentIntent.customer as string;
+      if (customerId) {
+        const user = await this.prisma.user.findFirst({
+          where: { stripeCustomerId: customerId }
+        });
+        
+        if (user) {
+          // Calculate premium expiration (1 month from now)
+          const premiumExpiresAt = new Date();
+          premiumExpiresAt.setMonth(premiumExpiresAt.getMonth() + 1);
+
+          await this.prisma.user.update({
+            where: { id: user.id },
+            data: {
+              isPremium: true,
+              premiumExpiresAt,
+            },
+          });
+          console.log(`User ${user.id} upgraded to premium via payment_intent`);
+        }
+      }
+      return;
+    }
+
+    // Update payment status
+    await this.prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: 'COMPLETED',
+        stripePaymentId: paymentIntent.id,
+        amount: paymentIntent.amount,
+      },
+    });
+
+    // Calculate premium expiration (1 month from now)
+    const premiumExpiresAt = new Date();
+    premiumExpiresAt.setMonth(premiumExpiresAt.getMonth() + 1);
+
+    // Update user premium status
+    await this.prisma.user.update({
+      where: { id: payment.userId },
+      data: {
+        isPremium: true,
+        premiumExpiresAt,
+      },
+    });
+
+    console.log(`User ${payment.userId} upgraded to premium`);
+  }
+
+  private async handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent) {
+    console.log('Payment failed:', paymentIntent.id);
+    
+    // Find and update the payment record
+    const payment = await this.prisma.payment.findFirst({
+      where: { 
+        stripePaymentId: paymentIntent.id,
+        status: 'PENDING'
+      }
+    });
+
+    if (payment) {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: 'FAILED' },
+      });
+    }
   }
 
   private async handleCheckoutComplete(session: Stripe.Checkout.Session) {
