@@ -71,4 +71,13 @@ export class StripeController {
   async getPremiumStatus(@CurrentUser('id') userId: string) {
     return this.stripeService.getPremiumStatus(userId);
   }
+
+  @Get('admin/subscriptions')
+  @UseGuards(JwtAuthGuard)
+  async getAdminSubscriptions(@CurrentUser('role') role: string) {
+    if (role !== 'ADMIN') {
+      throw new Error('Accès non autorisé');
+    }
+    return this.stripeService.getAdminSubscriptionsAnalytics();
+  }
 }

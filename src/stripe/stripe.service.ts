@@ -439,4 +439,180 @@ export class StripeService {
 
     return user;
   }
+
+  async getAdminSubscriptionsAnalytics() {
+    // Get all users with premium-related data
+    const allUsers = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isPremium: true,
+        premiumExpiresAt: true,
+        stripeCustomerId: true,
+        createdAt: true,
+        payments: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+            description: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    // Get all payments for analytics
+    const allPayments = await this.prisma.payment.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    // Calculate statistics
+    const premiumUsers = allUsers.filter(u => u.isPremium);
+    const expiredUsers = allUsers.filter(u => 
+      !u.isPremium && u.payments.some(p => p.status === 'COMPLETED')
+    );
+    const expiringUsers = premiumUsers.filter(u => 
+      u.premiumExpiresAt && new Date(u.premiumExpiresAt) <= sevenDaysFromNow
+    );
+
+    const completedPayments = allPayments.filter(p => p.status === 'COMPLETED');
+    const failedPayments = allPayments.filter(p => p.status === 'FAILED');
+    const pendingPayments = allPayments.filter(p => p.status === 'PENDING');
+
+    const recentPayments = completedPayments.filter(p => 
+      new Date(p.createdAt) >= thirtyDaysAgo
+    );
+    const weeklyPayments = completedPayments.filter(p => 
+      new Date(p.createdAt) >= sevenDaysAgo
+    );
+
+    // Revenue calculations (amount is in cents)
+    const totalRevenue = completedPayments.reduce((sum, p) => sum + p.amount, 0) / 100;
+    const monthlyRevenue = recentPayments.reduce((sum, p) => sum + p.amount, 0) / 100;
+    const weeklyRevenue = weeklyPayments.reduce((sum, p) => sum + p.amount, 0) / 100;
+
+    // Monthly revenue trend (last 6 months)
+    const monthlyTrend: { month: string; revenue: number; count: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+      const monthPayments = completedPayments.filter(p => {
+        const date = new Date(p.createdAt);
+        return date >= monthStart && date <= monthEnd;
+      });
+      monthlyTrend.push({
+        month: monthStart.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),
+        revenue: monthPayments.reduce((sum, p) => sum + p.amount, 0) / 100,
+        count: monthPayments.length,
+      });
+    }
+
+    // Subscribers list with details
+    const subscribers = premiumUsers.map(user => {
+      const userPayments = user.payments.filter(p => p.status === 'COMPLETED');
+      const totalSpent = userPayments.reduce((sum, p) => sum + p.amount, 0) / 100;
+      const firstPayment = userPayments.length > 0 
+        ? userPayments[userPayments.length - 1].createdAt 
+        : null;
+      const lastPayment = userPayments.length > 0 
+        ? userPayments[0].createdAt 
+        : null;
+      
+      const daysUntilExpiry = user.premiumExpiresAt 
+        ? Math.ceil((new Date(user.premiumExpiresAt).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      return {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isPremium: user.isPremium,
+        premiumExpiresAt: user.premiumExpiresAt,
+        daysUntilExpiry,
+        totalPayments: userPayments.length,
+        totalSpent,
+        firstPaymentDate: firstPayment,
+        lastPaymentDate: lastPayment,
+        memberSince: user.createdAt,
+        status: daysUntilExpiry && daysUntilExpiry <= 7 ? 'expiring_soon' : 'active',
+      };
+    });
+
+    // Recent transactions
+    const recentTransactions = allPayments.slice(0, 20).map(p => ({
+      id: p.id,
+      userId: p.user.id,
+      userEmail: p.user.email,
+      userName: `${p.user.firstName} ${p.user.lastName}`,
+      amount: p.amount / 100,
+      status: p.status,
+      description: p.description,
+      createdAt: p.createdAt,
+    }));
+
+    // Churn analysis
+    const churnedUsers = expiredUsers.length;
+    const churnRate = premiumUsers.length + churnedUsers > 0
+      ? (churnedUsers / (premiumUsers.length + churnedUsers)) * 100
+      : 0;
+
+    // Average revenue per user
+    const arpu = premiumUsers.length > 0 
+      ? totalRevenue / premiumUsers.length 
+      : 0;
+
+    return {
+      summary: {
+        totalSubscribers: premiumUsers.length,
+        activeSubscribers: premiumUsers.length,
+        expiredSubscribers: expiredUsers.length,
+        expiringThisWeek: expiringUsers.length,
+        totalRevenue,
+        monthlyRevenue,
+        weeklyRevenue,
+        averageRevenuePerUser: Math.round(arpu * 100) / 100,
+        churnRate: Math.round(churnRate * 100) / 100,
+        conversionRate: allUsers.length > 0 
+          ? Math.round((premiumUsers.length / allUsers.length) * 10000) / 100 
+          : 0,
+      },
+      payments: {
+        total: allPayments.length,
+        completed: completedPayments.length,
+        failed: failedPayments.length,
+        pending: pendingPayments.length,
+        successRate: allPayments.length > 0 
+          ? Math.round((completedPayments.length / allPayments.length) * 10000) / 100 
+          : 0,
+      },
+      monthlyTrend,
+      subscribers: subscribers.sort((a, b) => 
+        new Date(b.lastPaymentDate || 0).getTime() - new Date(a.lastPaymentDate || 0).getTime()
+      ),
+      recentTransactions,
+      expiringSubscribers: subscribers
+        .filter(s => s.status === 'expiring_soon')
+        .sort((a, b) => (a.daysUntilExpiry || 0) - (b.daysUntilExpiry || 0)),
+    };
+  }
 }
