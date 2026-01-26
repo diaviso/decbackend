@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import type { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -31,7 +32,10 @@ import { CurrentUser } from './decorators/current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
@@ -67,7 +71,8 @@ export class AuthController {
   async googleAuthCallback(@Req() req: any, @Res() res: Response) {
     const result = await this.authService.googleLogin(req.user);
     const userEncoded = encodeURIComponent(JSON.stringify(result.user));
-    res.redirect(`http://localhost:3001/auth/callback?token=${result.token}&user=${userEncoded}`);
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3001';
+    res.redirect(`${frontendUrl}/auth/callback?token=${result.token}&user=${userEncoded}`);
   }
 
   @Get('profile')
