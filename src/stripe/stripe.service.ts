@@ -116,7 +116,7 @@ export class StripeService {
     // Update user autoRenew preference
     await this.prisma.user.update({
       where: { id: userId },
-      data: { autoRenew },
+      data: { autoRenew } as any,
     });
 
     // Create payment record
@@ -140,7 +140,7 @@ export class StripeService {
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { autoRenew },
+      data: { autoRenew } as any,
     });
 
     return { 
@@ -158,9 +158,10 @@ export class StripeService {
     }
 
     // Cancel Stripe subscription if exists
-    if (user.stripeSubscriptionId) {
+    const userAny = user as any;
+    if (userAny.stripeSubscriptionId) {
       try {
-        await this.stripe.subscriptions.cancel(user.stripeSubscriptionId);
+        await this.stripe.subscriptions.cancel(userAny.stripeSubscriptionId);
       } catch (err) {
         console.log('No active Stripe subscription to cancel');
       }
@@ -172,7 +173,7 @@ export class StripeService {
       data: { 
         autoRenew: false,
         stripeSubscriptionId: null,
-      },
+      } as any,
     });
 
     return { 
