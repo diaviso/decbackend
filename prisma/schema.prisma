@@ -45,7 +45,9 @@ model User {
   showInLeaderboard   Boolean             @default(true)
   isPremium           Boolean             @default(false)
   premiumExpiresAt    DateTime?
+  autoRenew           Boolean             @default(true)
   stripeCustomerId    String?             @unique
+  stripeSubscriptionId String?            @unique
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 

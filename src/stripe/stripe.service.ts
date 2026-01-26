@@ -62,7 +62,7 @@ export class StripeService {
     return { sessionId: session.id, url: session.url };
   }
 
-  async createOneTimePayment(userId: string, amount: number) {
+  async createSubscription(userId: string, autoRenew: boolean = true) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('Utilisateur non trouvé');
@@ -83,7 +83,10 @@ export class StripeService {
       });
     }
 
-    // Create checkout session for one-time payment
+    // Amount: 1 euro = 100 cents
+    const amount = 100;
+
+    // Create checkout session for payment
     const session = await this.stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
@@ -95,7 +98,7 @@ export class StripeService {
               name: 'Abonnement Premium DEC Learning',
               description: 'Accès illimité à tous les quiz premium pendant 1 mois',
             },
-            unit_amount: amount, // Amount in cents
+            unit_amount: amount,
           },
           quantity: 1,
         },
@@ -106,7 +109,14 @@ export class StripeService {
       metadata: {
         userId: user.id,
         type: 'premium_monthly',
+        autoRenew: autoRenew ? 'true' : 'false',
       },
+    });
+
+    // Update user autoRenew preference
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { autoRenew },
     });
 
     // Create payment record
@@ -115,11 +125,60 @@ export class StripeService {
         userId: user.id,
         amount: amount,
         stripeSessionId: session.id,
-        description: 'Abonnement Premium DEC Learning - 1 mois',
+        description: 'Abonnement Premium DEC Learning - 1 mois (1€)',
       },
     });
 
     return { sessionId: session.id, url: session.url };
+  }
+
+  async toggleAutoRenew(userId: string, autoRenew: boolean) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { autoRenew },
+    });
+
+    return { 
+      message: autoRenew 
+        ? 'Renouvellement automatique activé' 
+        : 'Renouvellement automatique désactivé',
+      autoRenew 
+    };
+  }
+
+  async cancelSubscription(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+
+    // Cancel Stripe subscription if exists
+    if (user.stripeSubscriptionId) {
+      try {
+        await this.stripe.subscriptions.cancel(user.stripeSubscriptionId);
+      } catch (err) {
+        console.log('No active Stripe subscription to cancel');
+      }
+    }
+
+    // Update user - disable auto-renew but keep premium until expiration
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { 
+        autoRenew: false,
+        stripeSubscriptionId: null,
+      },
+    });
+
+    return { 
+      message: 'Abonnement annulé. Vous conservez l\'accès premium jusqu\'à la fin de la période en cours.',
+      premiumExpiresAt: user.premiumExpiresAt,
+    };
   }
 
   async handleWebhook(signature: string, payload: Buffer) {

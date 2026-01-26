@@ -26,13 +26,26 @@ export class StripeController {
 
   @Post('create-payment')
   @UseGuards(JwtAuthGuard)
-  async createOneTimePayment(
+  async createSubscription(
     @CurrentUser('id') userId: string,
-    @Body('amount') amount: number,
+    @Body('autoRenew') autoRenew: boolean = true,
   ) {
-    // Default to 9.99 EUR (999 cents) for monthly premium
-    const paymentAmount = amount || 999;
-    return this.stripeService.createOneTimePayment(userId, paymentAmount);
+    return this.stripeService.createSubscription(userId, autoRenew);
+  }
+
+  @Post('toggle-auto-renew')
+  @UseGuards(JwtAuthGuard)
+  async toggleAutoRenew(
+    @CurrentUser('id') userId: string,
+    @Body('autoRenew') autoRenew: boolean,
+  ) {
+    return this.stripeService.toggleAutoRenew(userId, autoRenew);
+  }
+
+  @Post('cancel-subscription')
+  @UseGuards(JwtAuthGuard)
+  async cancelSubscription(@CurrentUser('id') userId: string) {
+    return this.stripeService.cancelSubscription(userId);
   }
 
   @Post('webhook')
