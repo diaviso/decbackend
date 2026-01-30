@@ -75,6 +75,11 @@ export class AuthController {
     res.redirect(`${frontendUrl}/auth/callback?token=${result.token}&user=${userEncoded}`);
   }
 
+  @Post('google/mobile')
+  async googleMobileAuth(@Body() body: { idToken: string }) {
+    return this.authService.googleMobileLogin(body.idToken);
+  }
+
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   async getProfile(@CurrentUser('id') userId: string) {

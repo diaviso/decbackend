@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+ximport { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface LeaderboardEntry {
@@ -6,6 +6,7 @@ export interface LeaderboardEntry {
   userId: string;
   firstName: string;
   lastName: string;
+  avatar: string | null;
   stars: number;
 }
 
@@ -23,6 +24,7 @@ export class LeaderboardService {
         id: true,
         firstName: true,
         lastName: true,
+        avatar: true,
         stars: true,
       },
       orderBy: {
@@ -36,6 +38,7 @@ export class LeaderboardService {
       userId: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
+      avatar: user.avatar,
       stars: user.stars,
     }));
   }

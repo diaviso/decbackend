@@ -393,6 +393,66 @@ export class AuthService {
     };
   }
 
+  async googleMobileLogin(idToken: string) {
+    // Verify the Google ID token
+    const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+    
+    if (!response.ok) {
+      throw new UnauthorizedException('Invalid Google token');
+    }
+
+    const payload = await response.json();
+    
+    // Verify the token is for our app
+    const googleClientId = process.env.GOOGLE_CLIENT_ID;
+    if (payload.aud !== googleClientId && !payload.aud?.includes(googleClientId)) {
+      throw new UnauthorizedException('Invalid token audience');
+    }
+
+    const { sub: googleId, email, given_name: firstName, family_name: lastName, picture: avatar } = payload;
+
+    let user = await this.prisma.user.findUnique({
+      where: { googleId },
+    });
+
+    if (!user) {
+      user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (user) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId,
+            isEmailVerified: true,
+          },
+        });
+      } else {
+        const userCount = await this.prisma.user.count();
+        const isFirstUser = userCount === 0;
+
+        user = await this.prisma.user.create({
+          data: {
+            email,
+            googleId,
+            firstName: firstName || 'User',
+            lastName: lastName || '',
+            isEmailVerified: true,
+            role: isFirstUser ? 'ADMIN' : 'USER',
+          },
+        });
+      }
+    }
+
+    const token = this.generateToken(user);
+
+    return {
+      token,
+      user: this.sanitizeUser(user),
+    };
+  }
+
   private generateToken(user: any) {
     const payload = { sub: user.id, email: user.email, role: user.role };
     return this.jwtService.sign(payload);
