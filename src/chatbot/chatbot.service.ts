@@ -11,7 +11,7 @@ export class ChatbotService {
   private readonly logger = new Logger(ChatbotService.name);
   private chatModel: ChatOpenAI;
 
-  private readonly systemPrompt = `tu es assitant, répond aux questions en utilisant le contexte qui t'est fournie`;
+  private readonly systemPrompt = `tu es un assitant, répond aux questions en utilisant le contexte qui t'est fournie, quand le contexte ne contient pas la réponse, utilise des connaissances générales en rapport avec la DEC en France. Soit très cordial et professionnel dans tes réponses.`;
 
   constructor(
     private configService: ConfigService,
