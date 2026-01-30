@@ -27,11 +27,11 @@ import { StripeModule } from './stripe/stripe.module';
     }),
     ServeStaticModule.forRoot(
       {
-        rootPath: join(__dirname, '..', 'uploads'),
+        rootPath: join(process.cwd(), 'uploads'),
         serveRoot: '/uploads',
       },
       {
-        rootPath: join(__dirname, '..', 'uploads', 'documents'),
+        rootPath: join(process.cwd(), 'uploads', 'documents'),
         serveRoot: '/uploads/documents',
       },
     ),
